@@ -116,7 +116,7 @@ class Plugin(BasePlugin):
         Args:
             vehicle (GenericVehicle): The vehicle to publish data for.
         """
-        vin = vehicle.vin.value
+        vin: Optional[str] = vehicle.vin.value
         if vin is None:
             raise ValueError("Vehicle has no VIN")
         LOG.debug("updating telemetry for vehicle %s", vehicle.vin)
