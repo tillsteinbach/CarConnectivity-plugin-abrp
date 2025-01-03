@@ -4,17 +4,18 @@ from typing import TYPE_CHECKING
 
 import threading
 import logging
+from datetime import timedelta
 
 from requests import Session, codes
 from requests.structures import CaseInsensitiveDict
 from requests.adapters import HTTPAdapter, Retry
 from requests import RequestException
 
-from carconnectivity.observable import Observable
 from carconnectivity.errors import ConfigurationError
 from carconnectivity.util import config_remove_credentials
 from carconnectivity.vehicle import GenericVehicle
 from carconnectivity.drive import GenericDrive
+from carconnectivity.attributes import BooleanAttribute, DurationAttribute
 from carconnectivity_plugins.base.plugin import BasePlugin
 from carconnectivity_plugins.abrp._version import __version__
 
@@ -44,10 +45,8 @@ class Plugin(BasePlugin):
     def __init__(self, plugin_id: str, car_connectivity: CarConnectivity, config: Dict) -> None:
         BasePlugin.__init__(self, plugin_id=plugin_id, car_connectivity=car_connectivity, config=config)
 
-        self._background_connect_thread: Optional[threading.Thread] = None
-        self._background_publish_topics_thread: Optional[threading.Thread] = None
+        self._background_thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
-        self.subscribed_vehicles: Dict[str, GenericVehicle] = {}
 
         self.subsequent_errors: int = 0
         self.__session: Session = Session()
@@ -55,7 +54,8 @@ class Plugin(BasePlugin):
         retries = Retry(total=3, backoff_factor=0.1, status_forcelist=[500, 502, 503, 504])
         self.__session.mount('https://api.iternio.com', HTTPAdapter(max_retries=retries))
 
-        self.telemetry_data: Dict[str, Dict] = {}
+        self.connected: BooleanAttribute = BooleanAttribute(name="connected", parent=self, value=False)
+        self.interval: DurationAttribute = DurationAttribute(name="interval", parent=self)
 
         # Configure logging
         if 'log_level' in config and config['log_level'] is not None:
@@ -71,54 +71,45 @@ class Plugin(BasePlugin):
             raise ValueError('No ABRP Tokens specified in config ("tokens" missing)')
         self.tokens: Dict[str, str] = self.config['tokens']
 
+        interval: int = 60
+        if 'interval' in self.config:
+            interval = self.config['interval']
+            if interval < 10:
+                raise ValueError('Intervall must be at least 10 seconds')
+        self.interval._set_value(timedelta(seconds=interval))  # pylint: disable=protected-access
+
     def startup(self) -> None:
         LOG.info("Starting ABRP plugin")
-        self.__check_subscribe_vehicles()
-        flag: Observable.ObserverEvent = Observable.ObserverEvent.ENABLED | Observable.ObserverEvent.DISABLED
-        self.car_connectivity.garage.add_observer(self.__on_garage_enabled, flag=flag, priority=Observable.ObserverPriority.USER_LOW,
-                                                  on_transaction_end=True)
+        self._background_thread = threading.Thread(target=self._background_loop, daemon=False)
+        self._background_thread.start()
         LOG.debug("Starting ABRP plugin done")
 
-    def __check_subscribe_vehicles(self) -> None:
-        for vin in self.tokens.keys():
-            vehicle: GenericVehicle | None = self.car_connectivity.garage.get_vehicle(vin)
-            if vehicle is not None and vehicle not in self.subscribed_vehicles.values():
-                vehicle.add_observer(self.__on_vehicle_update, flag=Observable.ObserverEvent.UPDATED, priority=Observable.ObserverPriority.USER_LOW,
-                                     on_transaction_end=True)
-                self.subscribed_vehicles[vin] = vehicle
-                LOG.debug("Subscribed to vehicle %s", vin)
-                self._update_telemetry(vehicle)
+    def _background_loop(self) -> None:
+        self._stop_event.clear()
+        while not self._stop_event.is_set():
+            for vin, token in self.tokens.items():
+                self._update_and_publish_telemetry(vin, token)
+            if self.interval.value is not None:
+                self._stop_event.wait(self.interval.value.total_seconds())
+            else:
+                self._stop_event.wait(60)
 
-    def __on_garage_enabled(self, element, flags) -> None:
-        if isinstance(element, GenericVehicle):
-            vin: Optional[str] = element.vin.value
-            if vin is None:
-                raise ValueError("Vehicle has no VIN")
-            if flags & Observable.ObserverEvent.ENABLED:
-                self.__check_subscribe_vehicles()
-            elif flags & Observable.ObserverEvent.DISABLED:
-                element.remove_observer(self.__on_vehicle_update)
-                self.subscribed_vehicles.pop(vin)
-                LOG.debug("Unsubscribed from vehicle %s", vin)
+    def shutdown(self) -> None:
+        self._stop_event.set()
+        if self._background_thread is not None:
+            self._background_thread.join()
+        self.connected._set_value(False)  # pylint: disable=protected-access
+        return super().shutdown()
 
-    def __on_vehicle_update(self, element, flags) -> None:
-        if flags & Observable.ObserverEvent.UPDATED:
-            LOG.debug("Vehicle %s updated", element)
-            self._update_telemetry(element)
-        if flags & Observable.ObserverEvent.DISABLED:
-            LOG.debug("Vehicle %s disabled", element)
-            element.remove_observer(self.__on_vehicle_update)
-            self.subscribed_vehicles.pop(element.vin)
-
-    def _update_telemetry(self, vehicle: GenericVehicle) -> None:
+    def _update_and_publish_telemetry(self, vin: str, token: str) -> None:
         """
         Publishes the data of the given vehicle to ABRP.
         Args:
             vehicle (GenericVehicle): The vehicle to publish data for.
         """
-        vin: Optional[str] = vehicle.vin.value
-        if vin is None:
-            raise ValueError("Vehicle has no VIN")
+        vehicle: Optional[GenericVehicle] = self.car_connectivity.garage.get_vehicle(vin)
+        if vehicle is None:
+            return
         LOG.debug("updating telemetry for vehicle %s", vehicle.vin)
         telemetry_data = {}
         if vehicle.drives.enabled:
@@ -141,59 +132,44 @@ class Plugin(BasePlugin):
 
         if vehicle.odometer.enabled and vehicle.odometer.value is not None:
             telemetry_data['odometer'] = vehicle.odometer.value
-        self.telemetry_data[vin] = telemetry_data
-        self._publish_telemetry(vehicle)
+        self._publish_telemetry(vin, telemetry_data, token)
 
-    def _publish_telemetry(self, vehicle: GenericVehicle):  # noqa: C901
-        vin = vehicle.vin.value
-        if vin is None:
-            raise ValueError("Vehicle has no VIN")
-        if vin in self.tokens and vin in self.telemetry_data:
-            token = self.tokens[vin]
-            params = {'token': token}
-            data = {'tlm': self.telemetry_data[vin]}
-            try:
-                response = self.__session.post(API_BASE_URL + 'tlm/send', params=params, json=data)
-                if response.status_code != codes['ok']:
-                    LOG.error('ABRP send telemetry %s for vehicle vin failed with status code %d', str(data), response.status_code)
-                else:
-                    response_data = response.json()
-                    if response_data is not None:
-                        if 'status' in response_data:
-                            if response_data['status'] != 'ok':
-                                if self.subsequent_errors > 0:
-                                    LOG.error('ABRP send telemetry %s for vehicle %s failed', str(data), vin)
-                                else:
-                                    LOG.warning('ABRP send telemetry %s for vehicle %s failed', str(data), vin)
+    def _publish_telemetry(self, vin: str, telemetry_data: Dict, token: str):  # noqa: C901
+        params = {'token': token}
+        data = {'tlm': telemetry_data}
+        try:
+            response = self.__session.post(API_BASE_URL + 'tlm/send', params=params, json=data)
+            if response.status_code != codes['ok']:
+                LOG.error('ABRP send telemetry %s for vehicle vin failed with status code %d', str(data), response.status_code)
+            else:
+                response_data = response.json()
+                if response_data is not None:
+                    if 'status' in response_data:
+                        if response_data['status'] != 'ok':
+                            if self.subsequent_errors > 0:
+                                LOG.error('ABRP send telemetry %s for vehicle %s failed', str(data), vin)
+                                self.connected._set_value(False)  # pylint: disable=protected-access
                             else:
-                                self.subsequent_errors = 0
-                            if 'missing' in response_data:
-                                LOG.info('ABRP send telemetry %s for vehicle %s: %s', str(data), vin, response_data["missing"])
+                                LOG.warning('ABRP send telemetry %s for vehicle %s failed', str(data), vin)
+                                self.connected._set_value(False)  # pylint: disable=protected-access
                         else:
-                            LOG.error('ABRP send telemetry %s for vehicle %s returned unexpected data %s', str(data), vin, str(response_data))
+                            self.subsequent_errors = 0
+                            self.connected._set_value(True)  # pylint: disable=protected-access
+                        if 'missing' in response_data:
+                            LOG.info('ABRP send telemetry %s for vehicle %s: %s', str(data), vin, response_data["missing"])
                     else:
-                        LOG.error('ABRP send telemetry %s for vehicle %s for account returned empty data', str(data), vin)
-            except RequestException as e:
-                if self.subsequent_errors > 0:
-                    LOG.error('ABRP send telemetry %s for vehicle %s failed: %s, will try again after next change', str(data), vin, e)
+                        LOG.error('ABRP send telemetry %s for vehicle %s returned unexpected data %s', str(data), vin, str(response_data))
+                        self.connected._set_value(False)  # pylint: disable=protected-access
                 else:
-                    LOG.warning('ABRP send telemetry %s for vehicle %s failed: %s, will try again after next change', str(data), vin, e)
-
-    def shutdown(self) -> None:
-        """
-        Shuts down the connector by persisting current state, closing the session,
-        and cleaning up resources.
-
-        This method performs the following actions:
-        1. Persists the current state.
-        2. Closes the session.
-        3. Sets the session and manager to None.
-        4. Calls the shutdown method of the base connector.
-        """
-        LOG.info("Shutting down ABRP plugin")
-        for vehicle in self.subscribed_vehicles.values():
-            vehicle.remove_observer(self.__on_vehicle_update)
-        return super().shutdown()
+                    LOG.error('ABRP send telemetry %s for vehicle %s for account returned empty data', str(data), vin)
+                    self.connected._set_value(False)  # pylint: disable=protected-access
+        except RequestException as e:
+            if self.subsequent_errors > 0:
+                LOG.error('ABRP send telemetry %s for vehicle %s failed: %s, will try again after next change', str(data), vin, e)
+                self.connected._set_value(False)  # pylint: disable=protected-access
+            else:
+                LOG.warning('ABRP send telemetry %s for vehicle %s failed: %s, will try again after next change', str(data), vin, e)
+                self.connected._set_value(False)  # pylint: disable=protected-access
 
     def get_version(self) -> str:
         return __version__
