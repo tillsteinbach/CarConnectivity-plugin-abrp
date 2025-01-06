@@ -6,7 +6,7 @@ import threading
 import logging
 from datetime import timedelta
 
-from requests import Session, codes
+from requests import Response, Session, codes
 from requests.structures import CaseInsensitiveDict
 from requests.adapters import HTTPAdapter, Retry
 from requests import RequestException
@@ -21,7 +21,7 @@ from carconnectivity_plugins.base.plugin import BasePlugin
 from carconnectivity_plugins.abrp._version import __version__
 
 if TYPE_CHECKING:
-    from typing import Dict, Optional
+    from typing import Dict, Optional, Any
     from carconnectivity.carconnectivity import CarConnectivity
 
 LOG: logging.Logger = logging.getLogger("carconnectivity.plugins.abrp")
@@ -51,7 +51,7 @@ class Plugin(BasePlugin):
 
         self.subsequent_errors: int = 0
         self.__session: Session = Session()
-        self.__session.headers = HEADER
+        self.__session.headers = HEADER  # pyright: ignore[reportAttributeAccessIssue]
         retries = Retry(total=3, backoff_factor=0.1, status_forcelist=[500, 502, 503, 504])
         self.__session.mount('https://api.iternio.com', HTTPAdapter(max_retries=retries))
 
@@ -112,7 +112,7 @@ class Plugin(BasePlugin):
         if vehicle is None:
             return
         LOG.debug("updating telemetry for vehicle %s", vehicle.vin)
-        telemetry_data = {}
+        telemetry_data: Dict[str, Any] = {}
         if vehicle.drives.enabled:
             electric_drive: Optional[GenericDrive] = None
             if len(vehicle.drives.drives) == 1 and next(iter(vehicle.drives.drives.values())).enabled:
@@ -152,17 +152,17 @@ class Plugin(BasePlugin):
                     elif vehicle.charging.type.value == Charging.ChargingType.AC:
                         telemetry_data['is_dcfc'] = False
                 if vehicle.charging.power.enabled and vehicle.charging.power.value is not None:
-                    power = vehicle.charging.power.value * -1
+                    power: float = vehicle.charging.power.value * -1
                     if vehicle.charging.state.enabled and vehicle.charging.state.value is not None \
                             and vehicle.charging.state.value == Charging.ChargingState.DISCHARGING:
                         power = power * -1
                     telemetry_data['power'] = power
 
     def _publish_telemetry(self, vin: str, telemetry_data: Dict, token: str):  # noqa: C901
-        params = {'token': token}
-        data = {'tlm': telemetry_data}
+        params: Dict[str, str] = {'token': token}
+        data: Dict[str, Dict[str, Any]] = {'tlm': telemetry_data}
         try:
-            response = self.__session.post(API_BASE_URL + 'tlm/send', params=params, json=data)
+            response: Response = self.__session.post(API_BASE_URL + 'tlm/send', params=params, json=data)
             if response.status_code != codes['ok']:
                 LOG.error('ABRP send telemetry %s for vehicle vin failed with status code %d', str(data), response.status_code)
             else:
