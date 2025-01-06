@@ -13,7 +13,8 @@ from requests import RequestException
 
 from carconnectivity.errors import ConfigurationError
 from carconnectivity.util import config_remove_credentials
-from carconnectivity.vehicle import GenericVehicle
+from carconnectivity.vehicle import GenericVehicle, ElectricVehicle
+from carconnectivity.charging import Charging
 from carconnectivity.drive import GenericDrive
 from carconnectivity.attributes import BooleanAttribute, DurationAttribute
 from carconnectivity_plugins.base.plugin import BasePlugin
@@ -133,6 +134,29 @@ class Plugin(BasePlugin):
         if vehicle.odometer.enabled and vehicle.odometer.value is not None:
             telemetry_data['odometer'] = vehicle.odometer.value
         self._publish_telemetry(vin, telemetry_data, token)
+
+        if isinstance(vehicle, ElectricVehicle):
+            if vehicle.charging is not None and vehicle.charging.enabled:
+                if vehicle.charging.state.enabled and vehicle.charging.state.value is not None:
+                    if vehicle.charging.state.value in [Charging.ChargingState.CHARGING,
+                                                        Charging.ChargingState.CONSERVATION,
+                                                        Charging.ChargingState.DISCHARGING]:
+                        telemetry_data['is_charging'] = True
+                    elif vehicle.charging.state.value in [Charging.ChargingState.OFF,
+                                                          Charging.ChargingState.READY_FOR_CHARGING,
+                                                          Charging.ChargingState.ERROR]:
+                        telemetry_data['is_charging'] = False
+                if vehicle.charging.type.enabled and vehicle.charging.type.value is not None:
+                    if vehicle.charging.type.value == Charging.ChargingType.DC:
+                        telemetry_data['is_dcfc'] = True
+                    elif vehicle.charging.type.value == Charging.ChargingType.AC:
+                        telemetry_data['is_dcfc'] = False
+                if vehicle.charging.power.enabled and vehicle.charging.power.value is not None:
+                    power = vehicle.charging.power.value * -1
+                    if vehicle.charging.state.enabled and vehicle.charging.state.value is not None \
+                            and vehicle.charging.state.value == Charging.ChargingState.DISCHARGING:
+                        power = power * -1
+                    telemetry_data['power'] = power
 
     def _publish_telemetry(self, vin: str, telemetry_data: Dict, token: str):  # noqa: C901
         params = {'token': token}
