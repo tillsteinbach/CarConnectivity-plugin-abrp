@@ -133,7 +133,6 @@ class Plugin(BasePlugin):
 
         if vehicle.odometer.enabled and vehicle.odometer.value is not None:
             telemetry_data['odometer'] = vehicle.odometer.value
-        self._publish_telemetry(vin, telemetry_data, token)
 
         if isinstance(vehicle, ElectricVehicle):
             if vehicle.charging is not None and vehicle.charging.enabled:
@@ -157,6 +156,18 @@ class Plugin(BasePlugin):
                             and vehicle.charging.state.value == Charging.ChargingState.DISCHARGING:
                         power = power * -1
                     telemetry_data['power'] = power
+
+        if vehicle.position is not None and vehicle.position.enabled:
+            if vehicle.position.position_type.enabled and vehicle.position.position_type.value is not None:
+                if vehicle.position.position_type.value == vehicle.position.PositionType.PARKING:
+                    telemetry_data['is_parked'] = True
+                elif vehicle.position.position_type.value == vehicle.position.PositionType.DRIVING:
+                    telemetry_data['is_parked'] = False
+            if vehicle.position.latitude.enabled and vehicle.position.latitude.value is not None \
+                    and vehicle.position.longitude.enabled and vehicle.position.longitude.value is not None:
+                telemetry_data['lat'] = vehicle.position.latitude.value
+                telemetry_data['lon'] = vehicle.position.longitude.value
+        self._publish_telemetry(vin, telemetry_data, token)
 
     def _publish_telemetry(self, vin: str, telemetry_data: Dict, token: str):  # noqa: C901
         params: Dict[str, str] = {'token': token}
