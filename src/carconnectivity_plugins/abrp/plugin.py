@@ -17,6 +17,7 @@ from carconnectivity.vehicle import GenericVehicle, ElectricVehicle
 from carconnectivity.charging import Charging
 from carconnectivity.drive import GenericDrive
 from carconnectivity.attributes import BooleanAttribute, DurationAttribute
+from carconnectivity.units import Temperature
 from carconnectivity_plugins.base.plugin import BasePlugin
 from carconnectivity_plugins.abrp._version import __version__
 
@@ -167,6 +168,8 @@ class Plugin(BasePlugin):
                     and vehicle.position.longitude.enabled and vehicle.position.longitude.value is not None:
                 telemetry_data['lat'] = vehicle.position.latitude.value
                 telemetry_data['lon'] = vehicle.position.longitude.value
+        if vehicle.outside_temperature.enabled and vehicle.outside_temperature.value is not None:
+            telemetry_data['ext_temp'] = vehicle.outside_temperature.temperature_in(Temperature.C)
         self._publish_telemetry(vin, telemetry_data, token)
 
     def _publish_telemetry(self, vin: str, telemetry_data: Dict, token: str):  # noqa: C901
