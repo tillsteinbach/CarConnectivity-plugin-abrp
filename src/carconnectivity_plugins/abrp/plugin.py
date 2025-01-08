@@ -52,7 +52,7 @@ class Plugin(BasePlugin):
         self.subsequent_errors: int = 0
         self.__session: Session = Session()
         self.__session.headers = HEADER  # pyright: ignore[reportAttributeAccessIssue]
-        retries = Retry(total=3, backoff_factor=0.1, status_forcelist=[500, 502, 503, 504])
+        retries = Retry(total=3, connect=3, read=3, status=3, other=3, backoff_factor=0.1, status_forcelist=[500, 502, 503, 504])
         self.__session.mount('https://api.iternio.com', HTTPAdapter(max_retries=retries))
 
         self.connected: BooleanAttribute = BooleanAttribute(name="connected", parent=self, value=False)
