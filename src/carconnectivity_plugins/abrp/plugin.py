@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import threading
 import logging
-from datetime import timedelta
+from datetime import timedelta, timezone
 
 from requests import Response, Session, codes
 from requests.structures import CaseInsensitiveDict
@@ -17,7 +17,7 @@ from carconnectivity.vehicle import GenericVehicle, ElectricVehicle
 from carconnectivity.charging import Charging
 from carconnectivity.drive import GenericDrive
 from carconnectivity.attributes import BooleanAttribute, DurationAttribute
-from carconnectivity.units import Temperature
+from carconnectivity.units import Temperature, Length, Power
 from carconnectivity_plugins.base.plugin import BasePlugin
 from carconnectivity_plugins.abrp._version import __version__
 
@@ -127,13 +127,13 @@ class Plugin(BasePlugin):
                 if electric_drive.level.enabled and electric_drive.level.value is not None:
                     telemetry_data['soc'] = electric_drive.level.value
                     if electric_drive.level.last_updated is not None:
-                        telemetry_data['utc'] = electric_drive.level.last_updated.timestamp()
+                        telemetry_data['utc'] = electric_drive.level.last_updated.astimezone(timezone.utc).timestamp()
 
                 if electric_drive.range.enabled and electric_drive.range.value is not None:
                     telemetry_data['est_battery_range'] = electric_drive.range.value
 
         if vehicle.odometer.enabled and vehicle.odometer.value is not None:
-            telemetry_data['odometer'] = vehicle.odometer.value
+            telemetry_data['odometer'] = vehicle.odometer.range_in(Length.KM)
 
         if isinstance(vehicle, ElectricVehicle):
             if vehicle.charging is not None and vehicle.charging.enabled:
@@ -152,7 +152,7 @@ class Plugin(BasePlugin):
                     elif vehicle.charging.type.value == Charging.ChargingType.AC:
                         telemetry_data['is_dcfc'] = False
                 if vehicle.charging.power.enabled and vehicle.charging.power.value is not None:
-                    power: float = vehicle.charging.power.value * -1
+                    power: float = vehicle.charging.power.power_in(Power.KW) * -1
                     if vehicle.charging.state.enabled and vehicle.charging.state.value is not None \
                             and vehicle.charging.state.value == Charging.ChargingState.DISCHARGING:
                         power = power * -1
