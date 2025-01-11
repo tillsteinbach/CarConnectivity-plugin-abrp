@@ -12,6 +12,13 @@
 
 [CarConnectivity](https://github.com/tillsteinbach/CarConnectivity) is a python API to connect to various car services. If you want to automatically forward the data collected from your vehicle to [A Better Routeplanner (ABRP)[https://abetterrouteplanner.com) this plugin will help you.
 
+### Install using PIP
+If you want to use the CarConnectivity Plugin for ABRP, the easiest way is to obtain it from [PyPI](https://pypi.org/project/carconnectivity-plugin-abrp/). Just install it using:
+```bash
+pip3 install carconnectivity-plugin-abrp
+```
+after you installed CarConnectivity
+
 ## Configuration
 In your carconnectivity.json configuration add a section for the abrp plugin like this:
 ```
@@ -35,3 +42,9 @@ In your carconnectivity.json configuration add a section for the abrp plugin lik
 }
 ```
 To retrieve your token go to your vehicle on [A Better Routeplanner (ABRP)[https://abetterrouteplanner.com) select "Live Data" and then link your vehicle using the "Generic" section. It will display you the token to paste in the configuration. You need to configure a mapping between the VIN and the token for each vehicle you want to connect to [ABRP[https://abetterrouteplanner.com)
+
+## Updates
+If you want to update, the easiest way is:
+```bash
+pip3 install carconnectivity-plugin-abrp --upgrade
+```
