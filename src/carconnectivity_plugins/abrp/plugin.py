@@ -152,7 +152,7 @@ class Plugin(BasePlugin):
                     elif vehicle.charging.type.value == Charging.ChargingType.AC:
                         telemetry_data['is_dcfc'] = False
                 if vehicle.charging.power.enabled and vehicle.charging.power.value is not None:
-                    power: float = vehicle.charging.power.power_in(Power.KW) * -1
+                    power: float = vehicle.charging.power.power_in(Power.KW) * -1  # type: ignore[reportOptionalOperand]
                     if vehicle.charging.state.enabled and vehicle.charging.state.value is not None \
                             and vehicle.charging.state.value == Charging.ChargingState.DISCHARGING:
                         power = power * -1
