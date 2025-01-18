@@ -103,7 +103,7 @@ class Plugin(BasePlugin):
         self.connected._set_value(False)  # pylint: disable=protected-access
         return super().shutdown()
 
-    def _update_and_publish_telemetry(self, vin: str, token: str) -> None:
+    def _update_and_publish_telemetry(self, vin: str, token: str) -> None:  # pylint: disable=too-many-branches, too-many-statements
         """
         Publishes the data of the given vehicle to ABRP.
         Args:
@@ -172,10 +172,10 @@ class Plugin(BasePlugin):
             telemetry_data['ext_temp'] = vehicle.outside_temperature.temperature_in(Temperature.C)
         self._publish_telemetry(vin, telemetry_data, token)
 
-    def _publish_telemetry(self, vin: str, telemetry_data: Dict, token: str):  # noqa: C901
+    def _publish_telemetry(self, vin: str, telemetry_data: Dict, token: str):  # noqa: C901  # pylint: disable=too-many-branches
         params: Dict[str, str] = {'token': token}
         data: Dict[str, Dict[str, Any]] = {'tlm': telemetry_data}
-        try:
+        try:  # pylint: disable=too-many-nested-blocks
             response: Response = self.__session.post(API_BASE_URL + 'tlm/send', params=params, json=data)
             if response.status_code != codes['ok']:
                 LOG.error('ABRP send telemetry %s for vehicle vin failed with status code %d', str(data), response.status_code)
