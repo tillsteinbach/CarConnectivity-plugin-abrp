@@ -62,11 +62,11 @@ class Plugin(BasePlugin):
         # Configure logging
         if 'log_level' in config and config['log_level'] is not None:
             config['log_level'] = config['log_level'].upper()
-            if config['log_level'] in logging.getLevelNamesMapping():
+            if config['log_level'] in logging._nameToLevel:
                 LOG.setLevel(config['log_level'])
                 self.log_level._set_value(config['log_level'])  # pylint: disable=protected-access
             else:
-                raise ConfigurationError(f'Invalid log level: "{config["log_level"]}" not in {list(logging.getLevelNamesMapping().keys())}')
+                raise ConfigurationError(f'Invalid log level: "{config["log_level"]}" not in {list(logging._nameToLevel.keys())}')
         LOG.info("Loading abrp plugin with config %s", config_remove_credentials(self.config))
 
         if 'tokens' not in self.config or not self.config['tokens']:
