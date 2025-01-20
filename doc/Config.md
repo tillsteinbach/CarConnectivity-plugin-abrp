@@ -29,7 +29,7 @@ The `type` and config options specific to your connector or plugin can be found 
         ],
         "plugins": [
             {
-                "type": "abrp", // Definition for the ABRP Connection
+                "type": "abrp", // Minimal definition for the ABRP Connection
                 "config": {
                     "tokens": { // Token mapping
                         "HEPFLJ9NY8SF098455": "16234fec3-4aa3e-4723e-b51f-1e5e37h4755da3"
@@ -49,6 +49,7 @@ These are the valid options for the ABRP plugin
         "plugins": [
             {
                 "type": "abrp", // Definition for the ABRP plugin
+                "disabled": false, // You can disable plugins without removing them from the config completely
                 "config": {
                     "log_level": "error", // The log level for the plugin. Otherwise uses the global log level
                     "tokens": { // Token mapping one line for each car, key is the VIN, value is the ABRP token for the car
