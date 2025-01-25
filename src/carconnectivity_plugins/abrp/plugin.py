@@ -20,6 +20,7 @@ from carconnectivity.attributes import BooleanAttribute, DurationAttribute
 from carconnectivity.units import Temperature, Length, Power
 from carconnectivity_plugins.base.plugin import BasePlugin
 from carconnectivity_plugins.abrp._version import __version__
+from carconnectivity_plugins.abrp.abrp_object import ABRP
 
 if TYPE_CHECKING:
     from typing import Dict, Optional, Any
@@ -55,6 +56,8 @@ class Plugin(BasePlugin):
         self.__session.headers = HEADER  # pyright: ignore[reportAttributeAccessIssue]
         retries = Retry(total=3, connect=3, read=3, status=3, other=3, backoff_factor=0.1, status_forcelist=[500, 502, 503, 504])
         self.__session.mount('https://api.iternio.com', HTTPAdapter(max_retries=retries))
+
+        self.abrp_objects: Dict[str, ABRP] = {}
 
         self.connected: BooleanAttribute = BooleanAttribute(name="connected", parent=self, value=False)
         self.interval: DurationAttribute = DurationAttribute(name="interval", parent=self)
@@ -171,6 +174,28 @@ class Plugin(BasePlugin):
         if vehicle.outside_temperature.enabled and vehicle.outside_temperature.value is not None:
             telemetry_data['ext_temp'] = vehicle.outside_temperature.temperature_in(Temperature.C)
         self._publish_telemetry(vin, telemetry_data, token)
+        self._get_next_charge(vehicle=vehicle, token=token)
+
+    def _get_next_charge(self, vehicle: GenericVehicle, token: str) -> None:
+        if token not in self.abrp_objects:
+            abrp_object: ABRP = ABRP(vehicle=vehicle)
+            self.abrp_objects[token] = abrp_object
+        else:
+            abrp_object = self.abrp_objects[token]
+
+        params: Dict[str, str] = {'token': token}
+        response: Response = self.__session.post(API_BASE_URL + 'tlm/get_next_charge', params=params)
+        if response.status_code == codes['ok']:
+            response_json = response.json()
+            if 'status' in response_json and response_json['status'] == 'ok':
+                if 'next_charge' in response_json and response_json['next_charge'] is not None:
+                    abrp_object.next_charge_level._set_value(response_json['next_charge'])  # pylint: disable=protected-access
+                else:
+                    abrp_object.next_charge_level._set_value(None)  # pylint: disable=protected-access
+            else:
+                abrp_object.next_charge_level._set_value(None)  # pylint: disable=protected-access
+        else:
+            abrp_object.next_charge_level._set_value(None)  # pylint: disable=protected-access
 
     def _publish_telemetry(self, vin: str, telemetry_data: Dict, token: str):  # noqa: C901  # pylint: disable=too-many-branches
         params: Dict[str, str] = {'token': token}
