@@ -38,7 +38,7 @@ HEADER = CaseInsensitiveDict({'accept': 'application/json',
                               'Authorization': f'APIKEY {CARCONNECTIVITY_IDENTIFIER}'})
 
 
-class Plugin(BasePlugin):
+class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
     """
     Plugin class for ABRP connectivity.
     Args:
