@@ -14,7 +14,7 @@ authors = [
     { name = "Till Steinbach" }
 ]
 dependencies = [
-    "carconnectivity",
+    "carconnectivity~=0.1.0",
     "requests~=2.32.3"
 ]
 readme = "README.md"
@@ -35,6 +35,9 @@ classifiers = [
 ]
 
 [project.urls]
+
+[project.scripts]
+carconnectivity-abrp = "carconnectivity_abrp.carconnectivity_abrp_base:main"
 
 [tool.setuptools_scm]
 write_to = "src/carconnectivity_plugins/abrp/_version.py"
