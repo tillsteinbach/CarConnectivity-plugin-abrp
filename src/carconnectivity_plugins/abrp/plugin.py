@@ -73,14 +73,14 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
         LOG.info("Loading abrp plugin with config %s", config_remove_credentials(self.config))
 
         if 'tokens' not in self.config or not self.config['tokens']:
-            raise ValueError('No ABRP Tokens specified in config ("tokens" missing)')
+            raise ConfigurationError('No ABRP Tokens specified in config ("tokens" missing)')
         self.tokens: Dict[str, str] = self.config['tokens']
 
         interval: int = 60
         if 'interval' in self.config:
             interval = self.config['interval']
             if interval < 10:
-                raise ValueError('Intervall must be at least 10 seconds')
+                raise ConfigurationError('Intervall must be at least 10 seconds')
         self.interval._set_value(timedelta(seconds=interval))  # pylint: disable=protected-access
 
     def startup(self) -> None:
