@@ -1,0 +1,15 @@
+{
+    "carConnectivity": {
+        "log_level": "debug",
+        "connectors": [],
+        "plugins": [
+            {
+                "type": "abrp",
+                "disabled": false,
+                "config": {
+                    "log_level": "debug"
+                }
+            }
+        ]
+    }
+}
