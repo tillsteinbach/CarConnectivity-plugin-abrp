@@ -59,8 +59,8 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
 
         self.abrp_objects: Dict[str, ABRP] = {}
 
-        self.connected: BooleanAttribute = BooleanAttribute(name="connected", parent=self, value=False)
-        self.interval: DurationAttribute = DurationAttribute(name="interval", parent=self)
+        self.connected: BooleanAttribute = BooleanAttribute(name="connected", parent=self, value=False, tags={'plugin_custom'})
+        self.interval: DurationAttribute = DurationAttribute(name="interval", parent=self, tags={'plugin_custom'})
 
         # Configure logging
         if 'log_level' in config and config['log_level'] is not None:

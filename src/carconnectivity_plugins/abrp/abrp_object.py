@@ -17,7 +17,7 @@ class ABRP(GenericObject):
     """
     def __init__(self, vehicle: GenericVehicle) -> None:
         super().__init__(object_id='abrp', parent=vehicle)
-        self.next_charge_level = LevelAttribute('next_charge_level', parent=self)
+        self.next_charge_level = LevelAttribute('next_charge_level', parent=self, tags={'plugin_custom'})
 
     def __str__(self) -> str:
         return_string: str = ''
