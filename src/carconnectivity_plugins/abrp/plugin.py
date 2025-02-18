@@ -46,7 +46,7 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
         config (Dict): Configuration dictionary containing connection details.
     """
     def __init__(self, plugin_id: str, car_connectivity: CarConnectivity, config: Dict) -> None:
-        BasePlugin.__init__(self, plugin_id=plugin_id, car_connectivity=car_connectivity, config=config)
+        BasePlugin.__init__(self, plugin_id=plugin_id, car_connectivity=car_connectivity, config=config, log=LOG)
 
         self._background_thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
@@ -62,26 +62,18 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
         self.connected: BooleanAttribute = BooleanAttribute(name="connected", parent=self, value=False, tags={'plugin_custom'})
         self.interval: DurationAttribute = DurationAttribute(name="interval", parent=self, tags={'plugin_custom'})
 
-        # Configure logging
-        if 'log_level' in config and config['log_level'] is not None:
-            config['log_level'] = config['log_level'].upper()
-            if config['log_level'] in logging._nameToLevel:
-                LOG.setLevel(config['log_level'])
-                self.log_level._set_value(config['log_level'])  # pylint: disable=protected-access
-            else:
-                raise ConfigurationError(f'Invalid log level: "{config["log_level"]}" not in {list(logging._nameToLevel.keys())}')
-        LOG.info("Loading abrp plugin with config %s", config_remove_credentials(self.config))
+        LOG.info("Loading abrp plugin with config %s", config_remove_credentials(config))
 
-        if 'tokens' not in self.config or not self.config['tokens']:
+        if 'tokens' not in config or not config['tokens']:
             raise ConfigurationError('No ABRP Tokens specified in config ("tokens" missing)')
-        self.tokens: Dict[str, str] = self.config['tokens']
+        self.active_config['tokens'] = config['tokens']
 
-        interval: int = 60
-        if 'interval' in self.config:
-            interval = self.config['interval']
-            if interval < 10:
-                raise ConfigurationError('Intervall must be at least 10 seconds')
-        self.interval._set_value(timedelta(seconds=interval))  # pylint: disable=protected-access
+        self.active_config['interval'] = 60
+        if 'interval' in config:
+            self.active_config['interval'] = config['interval']
+            if self.active_config['interval'] < 10:
+                raise ConfigurationError('Interval must be at least 10 seconds')
+        self.interval._set_value(timedelta(seconds=self.active_config['interval']))  # pylint: disable=protected-access
 
     def startup(self) -> None:
         LOG.info("Starting ABRP plugin")
@@ -92,7 +84,7 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
     def _background_loop(self) -> None:
         self._stop_event.clear()
         while not self._stop_event.is_set():
-            for vin, token in self.tokens.items():
+            for vin, token in self.active_config['tokens'].items():
                 self._update_and_publish_telemetry(vin, token)
             if self.interval.value is not None:
                 self._stop_event.wait(self.interval.value.total_seconds())
