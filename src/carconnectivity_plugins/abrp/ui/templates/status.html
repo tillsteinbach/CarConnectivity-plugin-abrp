@@ -23,6 +23,7 @@
   </tbody>
 </table>
 <h2>Last Telemetry:</h2>
+<p>Last telemetry data sent to the ABRP servers for each connected vehicle</p>
 <table class="table">
   <thead>
     <tr>
@@ -43,6 +44,32 @@
               <td>{{value}}</td>
             </tr>
             {% endfor %}
+          </table>
+        </td>
+      </tr>
+      {% endfor %}
+  </tbody>
+</table>
+<h2>Last ABRP Data:</h2>
+<p>Latest data for each vehicle from ABRP (e.g. the next charge level on an active route)</p>
+<table class="table">
+  <thead>
+    <tr>
+      <th>VIN</th>
+      <th>Object</th>
+    </tr>
+  <tbody>
+      {% for id, objects in plugin.abrp_objects.items() %}
+      <tr>
+        <td>{{objects.parent.id}}</td>
+        <td>
+          <table class="table">
+            {% if objects.next_charge_level.enabled %}
+            <tr>
+              <td>next_charge_level</td>
+              <td>{{objects.next_charge_level}}</td>
+            </tr>
+            {% endif %}
           </table>
         </td>
       </tr>
