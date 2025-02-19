@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import threading
 import logging
-from datetime import timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 from requests import Response, Session, codes
 from requests.structures import CaseInsensitiveDict
@@ -23,7 +23,7 @@ from carconnectivity_plugins.abrp._version import __version__
 from carconnectivity_plugins.abrp.abrp_object import ABRP
 
 if TYPE_CHECKING:
-    from typing import Dict, Optional, Any
+    from typing import Dict, Optional, Any, Tuple
     from carconnectivity.carconnectivity import CarConnectivity
 
 LOG: logging.Logger = logging.getLogger("carconnectivity.plugins.abrp")
@@ -57,6 +57,7 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
         retries = Retry(total=3, connect=3, read=3, status=3, other=3, backoff_factor=0.1, status_forcelist=[500, 502, 503, 504])
         self.__session.mount('https://api.iternio.com', HTTPAdapter(max_retries=retries))
 
+        self.last_telemetry_data: Dict[str, Tuple[datetime, Dict]] = {}
         self.abrp_objects: Dict[str, ABRP] = {}
 
         self.connected: BooleanAttribute = BooleanAttribute(name="connected", parent=self, value=False, tags={'plugin_custom'})
@@ -210,6 +211,7 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
                         else:
                             self.subsequent_errors = 0
                             self.connected._set_value(True)  # pylint: disable=protected-access
+                            self.last_telemetry_data[vin] = (datetime.now(tz=timezone.utc), telemetry_data)
                         if 'missing' in response_data:
                             LOG.info('ABRP send telemetry %s for vehicle %s: %s', str(data), vin, response_data["missing"])
                     else:

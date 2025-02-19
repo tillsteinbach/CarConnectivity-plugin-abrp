@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import os
 
 import flask
+import flask_login
 
 from carconnectivity_plugins.base.plugin import BasePlugin
 from carconnectivity_plugins.base.ui.plugin_ui import BasePluginUI
@@ -22,11 +23,16 @@ class PluginUI(BasePluginUI):
                                                                     template_folder=os.path.dirname(__file__) + '/templates')
         super().__init__(plugin, blueprint=blueprint)
 
+        @self.blueprint.route('/status', methods=['GET'])
+        @flask_login.login_required
+        def status():
+            return flask.render_template('status.html', current_app=flask.current_app, plugin=self.plugin)
+
     def get_nav_items(self) -> List[Dict[Literal['text', 'url', 'sublinks', 'divider'], Union[str, List]]]:
         """
         Generates a list of navigation items for the ABRP plugin UI.
         """
-        return super().get_nav_items()
+        return super().get_nav_items() + [{"text": "Status", "url": flask.url_for('plugins.abrp.status')}]
 
     def get_title(self) -> str:
         """

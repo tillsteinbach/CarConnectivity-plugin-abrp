@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block header %}
+  <h1>{% block title %}ABRP Plugin Status {% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+<h2>Connection Status:</h2>
+<table class="table">
+  <tbody>
+    {% if plugin.connected.value %}
+    <tr class="table-success">
+    {% else %}
+    <tr class="table-danger">
+      {% endif %}
+          <td>Connection</td>
+          <td>{{ "connected" if plugin.connected.value else "unconnected"}}</td>
+      </tr>
+    <tr>
+        <td>Subsequent Errors</td>
+        <td>{{ plugin.subsequent_errors}}</td>
+    </tr>
+  </tbody>
+</table>
+<h2>Last Telemetry:</h2>
+<table class="table">
+  <thead>
+    <tr>
+      <th>VIN</th>
+      <th>transmitted</th>
+      <th>Telemetry</th>
+    </tr>
+  <tbody>
+      {% for vin, (transmitted, telemetry) in plugin.last_telemetry_data.items() %}
+      <tr>
+        <td>{{vin}}</td>
+        <td><p class="js-convert-time">{{transmitted}}</p></td>  
+        <td>
+          <table class="table">
+            {% for key, value in telemetry.items() %}
+            <tr>
+              <td>{{key}}</td>
+              <td>{{value}}</td>
+            </tr>
+            {% endfor %}
+          </table>
+        </td>
+      </tr>
+      {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
