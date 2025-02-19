@@ -13,5 +13,5 @@ All notable changes to this project will be documented in this file.
 Initial release, let's go and give this to the public to try out...
 
 [unreleased]: https://github.com/tillsteinbach/CarConnectivity-plugin-abrp/compare/v0.2...HEAD
-[0.2: https://github.com/tillsteinbach/CarConnectivity-plugin-abrp/releases/tag/v0.2
+[0.2]: https://github.com/tillsteinbach/CarConnectivity-plugin-abrp/releases/tag/v0.2
 [0.1]: https://github.com/tillsteinbach/CarConnectivity-plugin-abrp/releases/tag/v0.1
