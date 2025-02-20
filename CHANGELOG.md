@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 - No unreleased changes so far
 
+## [0.2.1] - 2025-02-20
+### Fixed
+- Fixes bug due to template ambiguity
+
+### Added
+- Plugin UI root
+
 ## [0.2] - 2025-02-19
 ### Added
 - Adds Plugin WebUI
