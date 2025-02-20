@@ -23,10 +23,14 @@ class PluginUI(BasePluginUI):
                                                                     template_folder=os.path.dirname(__file__) + '/templates')
         super().__init__(plugin, blueprint=blueprint)
 
+        @self.blueprint.route('/', methods=['GET'])
+        def root():
+            return flask.redirect(flask.url_for('plugins.abrp.status'))
+
         @self.blueprint.route('/status', methods=['GET'])
         @flask_login.login_required
         def status():
-            return flask.render_template('status.html', current_app=flask.current_app, plugin=self.plugin)
+            return flask.render_template('abrp/status.html', current_app=flask.current_app, plugin=self.plugin)
 
     def get_nav_items(self) -> List[Dict[Literal['text', 'url', 'sublinks', 'divider'], Union[str, List]]]:
         """
