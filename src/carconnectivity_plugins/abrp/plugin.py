@@ -79,6 +79,7 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
     def startup(self) -> None:
         LOG.info("Starting ABRP plugin")
         self._background_thread = threading.Thread(target=self._background_loop, daemon=False)
+        self._background_thread.name = 'carconnectivity.plugins.abrp-background'
         self._background_thread.start()
         LOG.debug("Starting ABRP plugin done")
 
