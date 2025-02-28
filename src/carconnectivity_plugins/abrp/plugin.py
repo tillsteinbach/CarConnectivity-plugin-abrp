@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import threading
+import traceback
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -47,6 +48,7 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
     """
     def __init__(self, plugin_id: str, car_connectivity: CarConnectivity, config: Dict) -> None:
         BasePlugin.__init__(self, plugin_id=plugin_id, car_connectivity=car_connectivity, config=config, log=LOG)
+        self._healthy = False
 
         self._background_thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
@@ -90,17 +92,23 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
         self._background_thread = threading.Thread(target=self._background_loop, daemon=False)
         self._background_thread.name = 'carconnectivity.plugins.abrp-background'
         self._background_thread.start()
+        self._healthy = True
         LOG.debug("Starting ABRP plugin done")
 
     def _background_loop(self) -> None:
         self._stop_event.clear()
         while not self._stop_event.is_set():
-            for vin, token in self.active_config['tokens'].items():
-                self._update_and_publish_telemetry(vin, token)
-            if self.interval.value is not None:
-                self._stop_event.wait(self.interval.value.total_seconds())
-            else:
-                self._stop_event.wait(60)
+            try:
+                for vin, token in self.active_config['tokens'].items():
+                    self._update_and_publish_telemetry(vin, token)
+                if self.interval.value is not None:
+                    self._stop_event.wait(self.interval.value.total_seconds())
+                else:
+                    self._stop_event.wait(60)
+            except Exception as err:
+                LOG.critical('Critical error during update: %s', traceback.format_exc())
+                self._healthy = False
+                raise err
 
     def shutdown(self) -> None:
         self._stop_event.set()
@@ -118,6 +126,10 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
         vehicle: Optional[GenericVehicle] = self.car_connectivity.garage.get_vehicle(vin)
         if vehicle is None:
             return
+        for connector in vehicle.managing_connectors:
+            if not connector.is_healthy():
+                LOG.error("not updating telemetry for vehicle %s due to unhealthy connector %s", vehicle.vin, connector.id)
+                return
         LOG.debug("updating telemetry for vehicle %s", vehicle.vin)
         telemetry_data: Dict[str, Any] = {}
         if vehicle.drives.enabled:
@@ -243,3 +255,6 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
 
     def get_type(self) -> str:
         return "carconnectivity-plugin-abrp"
+
+    def is_healthy(self) -> bool:
+        return self._healthy and super().is_healthy()
