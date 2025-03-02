@@ -17,7 +17,7 @@ from carconnectivity.util import config_remove_credentials
 from carconnectivity.vehicle import GenericVehicle, ElectricVehicle
 from carconnectivity.charging import Charging
 from carconnectivity.drive import GenericDrive
-from carconnectivity.attributes import DurationAttribute, GenericAttribute, EnumAttribute
+from carconnectivity.attributes import DurationAttribute, EnumAttribute
 from carconnectivity.enums import ConnectionState
 from carconnectivity.units import Temperature, Length, Power
 from carconnectivity_plugins.base.plugin import BasePlugin
@@ -65,15 +65,8 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
         self.connection_state: EnumAttribute = EnumAttribute(name="connection_state", parent=self, value_type=ConnectionState,
                                                              value=ConnectionState.DISCONNECTED, tags={'plugin_custom'})
         self.interval: DurationAttribute = DurationAttribute(name="interval", parent=self, tags={'plugin_custom'})
-
-        def __check_interval(attribute: GenericAttribute, value: Any) -> Any:
-            del attribute
-            if value is not None and value < timedelta(seconds=10):
-                raise ValueError('Intervall must be at least 10 seconds')
-            return value
-
+        self.interval.minimum = timedelta(seconds=180)
         self.interval._is_changeable = True  # pylint: disable=protected-access
-        self.interval._add_on_set_hook(__check_interval)  # pylint: disable=protected-access
 
         LOG.info("Loading abrp plugin with config %s", config_remove_credentials(config))
 
