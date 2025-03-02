@@ -8,13 +8,13 @@
 <h2>Connection Status:</h2>
 <table class="table">
   <tbody>
-    {% if plugin.connected.value %}
+    {% if plugin.connection_state.enabled %}
     <tr class="table-success">
     {% else %}
     <tr class="table-danger">
       {% endif %}
           <td>Connection</td>
-          <td>{{ "connected" if plugin.connected.value else "unconnected"}}</td>
+          <td>{{ plugin.connection_state.value.value }}</td>
       </tr>
     <tr>
         <td>Subsequent Errors</td>
