@@ -17,7 +17,8 @@ from carconnectivity.util import config_remove_credentials
 from carconnectivity.vehicle import GenericVehicle, ElectricVehicle
 from carconnectivity.charging import Charging
 from carconnectivity.drive import GenericDrive
-from carconnectivity.attributes import BooleanAttribute, DurationAttribute, GenericAttribute
+from carconnectivity.attributes import DurationAttribute, GenericAttribute, EnumAttribute
+from carconnectivity.enums import ConnectionState
 from carconnectivity.units import Temperature, Length, Power
 from carconnectivity_plugins.base.plugin import BasePlugin
 from carconnectivity_plugins.abrp._version import __version__
@@ -48,7 +49,6 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
     """
     def __init__(self, plugin_id: str, car_connectivity: CarConnectivity, config: Dict) -> None:
         BasePlugin.__init__(self, plugin_id=plugin_id, car_connectivity=car_connectivity, config=config, log=LOG)
-        self._healthy = False
 
         self._background_thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
@@ -62,7 +62,8 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
         self.last_telemetry_data: Dict[str, Tuple[datetime, Dict]] = {}
         self.abrp_objects: Dict[str, ABRP] = {}
 
-        self.connected: BooleanAttribute = BooleanAttribute(name="connected", parent=self, value=False, tags={'plugin_custom'})
+        self.connection_state: EnumAttribute = EnumAttribute(name="connection_state", parent=self, value_type=ConnectionState,
+                                                             value=ConnectionState.DISCONNECTED, tags={'plugin_custom'})
         self.interval: DurationAttribute = DurationAttribute(name="interval", parent=self, tags={'plugin_custom'})
 
         def __check_interval(attribute: GenericAttribute, value: Any) -> Any:
@@ -92,7 +93,7 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
         self._background_thread = threading.Thread(target=self._background_loop, daemon=False)
         self._background_thread.name = 'carconnectivity.plugins.abrp-background'
         self._background_thread.start()
-        self._healthy = True
+        self.healthy._set_value(value=True)  # pylint: disable=protected-access
         LOG.debug("Starting ABRP plugin done")
 
     def _background_loop(self) -> None:
@@ -100,6 +101,8 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
         while not self._stop_event.is_set():
             try:
                 for vin, token in self.active_config['tokens'].items():
+                    if self.connection_state.value != ConnectionState.CONNECTED:
+                        self.connection_state._set_value(value=ConnectionState.CONNECTING)  # pylint: disable=protected-access
                     self._update_and_publish_telemetry(vin, token)
                 if self.interval.value is not None:
                     self._stop_event.wait(self.interval.value.total_seconds())
@@ -107,14 +110,15 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
                     self._stop_event.wait(60)
             except Exception as err:
                 LOG.critical('Critical error during update: %s', traceback.format_exc())
-                self._healthy = False
+                self.healthy._set_value(value=False)  # pylint: disable=protected-access
+                self.connection_state._set_value(value=ConnectionState.ERROR)  # pylint: disable=protected-access
                 raise err
 
     def shutdown(self) -> None:
         self._stop_event.set()
         if self._background_thread is not None:
             self._background_thread.join()
-        self.connected._set_value(False)  # pylint: disable=protected-access
+        self.connection_state._set_value(value=ConnectionState.DISCONNECTED)  # pylint: disable=protected-access
         return super().shutdown()
 
     def _update_and_publish_telemetry(self, vin: str, token: str) -> None:  # pylint: disable=too-many-branches, too-many-statements
@@ -226,29 +230,27 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
                         if response_data['status'] != 'ok':
                             if self.subsequent_errors > 0:
                                 LOG.error('ABRP send telemetry %s for vehicle %s failed', str(data), vin)
-                                self.connected._set_value(False)  # pylint: disable=protected-access
                             else:
                                 LOG.warning('ABRP send telemetry %s for vehicle %s failed', str(data), vin)
-                                self.connected._set_value(False)  # pylint: disable=protected-access
+                            self.connection_state._set_value(value=ConnectionState.ERROR)  # pylint: disable=protected-access
                         else:
                             self.subsequent_errors = 0
-                            self.connected._set_value(True)  # pylint: disable=protected-access
+                            self.connection_state._set_value(value=ConnectionState.CONNECTED)  # pylint: disable=protected-access
                             self.last_telemetry_data[vin] = (datetime.now(tz=timezone.utc), telemetry_data)
                         if 'missing' in response_data:
                             LOG.info('ABRP send telemetry %s for vehicle %s: %s', str(data), vin, response_data["missing"])
                     else:
                         LOG.error('ABRP send telemetry %s for vehicle %s returned unexpected data %s', str(data), vin, str(response_data))
-                        self.connected._set_value(False)  # pylint: disable=protected-access
+                        self.connection_state._set_value(value=ConnectionState.ERROR)  # pylint: disable=protected-access
                 else:
                     LOG.error('ABRP send telemetry %s for vehicle %s for account returned empty data', str(data), vin)
-                    self.connected._set_value(False)  # pylint: disable=protected-access
+                    self.connection_state._set_value(value=ConnectionState.ERROR)  # pylint: disable=protected-access
         except RequestException as e:
             if self.subsequent_errors > 0:
                 LOG.error('ABRP send telemetry %s for vehicle %s failed: %s, will try again after next change', str(data), vin, e)
-                self.connected._set_value(False)  # pylint: disable=protected-access
             else:
                 LOG.warning('ABRP send telemetry %s for vehicle %s failed: %s, will try again after next change', str(data), vin, e)
-                self.connected._set_value(False)  # pylint: disable=protected-access
+            self.connection_state._set_value(value=ConnectionState.ERROR)  # pylint: disable=protected-access
 
     def get_version(self) -> str:
         return __version__
@@ -256,5 +258,5 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
     def get_type(self) -> str:
         return "carconnectivity-plugin-abrp"
 
-    def is_healthy(self) -> bool:
-        return self._healthy and super().is_healthy()
+    def get_name(self) -> str:
+        return "ABRP Plugin"
