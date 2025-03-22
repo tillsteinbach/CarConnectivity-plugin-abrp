@@ -183,8 +183,15 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
                     and vehicle.position.longitude.enabled and vehicle.position.longitude.value is not None:
                 telemetry_data['lat'] = vehicle.position.latitude.value
                 telemetry_data['lon'] = vehicle.position.longitude.value
+            if vehicle.position.altitude.enabled and vehicle.position.altitude.value is not None:
+                telemetry_data['elevation'] = vehicle.position.altitude.range_in(Length.M)
+            if vehicle.position.heading.enabled and vehicle.position.heading.value is not None:
+                telemetry_data['heading'] = vehicle.position.heading.value
         if vehicle.outside_temperature.enabled and vehicle.outside_temperature.value is not None:
             telemetry_data['ext_temp'] = vehicle.outside_temperature.temperature_in(Temperature.C)
+        if vehicle.climatization.enabled and vehicle.climatization.settings.enabled and vehicle.climatization.settings.target_temperature is not None \
+                and vehicle.climatization.settings.target_temperature.enabled and vehicle.climatization.settings.target_temperature.value is not None:
+            telemetry_data['hvac_setpoint'] = vehicle.climatization.settings.target_temperature.temperature_in(Temperature.C)
         self._publish_telemetry(vin, telemetry_data, token)
         self._get_next_charge(vehicle=vehicle, token=token)
 
