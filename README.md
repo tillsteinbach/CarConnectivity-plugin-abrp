@@ -10,7 +10,7 @@
 [![Donate at PayPal](https://img.shields.io/badge/Donate-PayPal-2997d8)](https://www.paypal.com/donate?hosted_button_id=2BVFF5GJ9SXAJ)
 [![Sponsor at Github](https://img.shields.io/badge/Sponsor-GitHub-28a745)](https://github.com/sponsors/tillsteinbach)
 
-[CarConnectivity](https://github.com/tillsteinbach/CarConnectivity) is a python API to connect to various car services. If you want to automatically forward the data collected from your vehicle to [A Better Routeplanner (ABRP)[https://abetterrouteplanner.com) this plugin will help you.
+[CarConnectivity](https://github.com/tillsteinbach/CarConnectivity) is a python API to connect to various car services. If you want to automatically forward the data collected from your vehicle to [A Better Routeplanner (ABRP)](https://abetterrouteplanner.com) this plugin will help you.
 
 ### Install using PIP
 If you want to use the CarConnectivity Plugin for ABRP, the easiest way is to obtain it from [PyPI](https://pypi.org/project/carconnectivity-plugin-abrp/). Just install it using:
