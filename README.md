@@ -41,7 +41,7 @@ In your carconnectivity.json configuration add a section for the abrp plugin lik
     }
 }
 ```
-To retrieve your token go to your vehicle on [A Better Routeplanner (ABRP)[https://abetterrouteplanner.com) select "Live Data" and then link your vehicle using the "Generic" section. It will display you the token to paste in the configuration. You need to configure a mapping between the VIN and the token for each vehicle you want to connect to [ABRP[https://abetterrouteplanner.com)
+To retrieve your token go to your vehicle on [A Better Routeplanner (ABRP)](https://abetterrouteplanner.com) select "Live Data" and then link your vehicle using the "Generic" section. It will display you the token to paste in the configuration. You need to configure a mapping between the VIN and the token for each vehicle you want to connect to [ABRP](https://abetterrouteplanner.com)
 
 ## Updates
 If you want to update, the easiest way is:
