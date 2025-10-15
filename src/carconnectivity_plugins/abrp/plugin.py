@@ -203,18 +203,25 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
             abrp_object = self.abrp_objects[token]
 
         params: Dict[str, str] = {'token': token}
-        response: Response = self.__session.post(API_BASE_URL + 'tlm/get_next_charge', params=params)
-        if response.status_code == codes['ok']:
-            response_json = response.json()
-            if 'status' in response_json and response_json['status'] == 'ok':
-                if 'next_charge' in response_json and response_json['next_charge'] is not None:
-                    abrp_object.next_charge_level._set_value(response_json['next_charge'])  # pylint: disable=protected-access
+        try:
+            response: Response = self.__session.post(API_BASE_URL + 'tlm/get_next_charge', params=params)
+            if response.status_code == codes['ok']:
+                response_json = response.json()
+                if 'status' in response_json and response_json['status'] == 'ok':
+                    if 'next_charge' in response_json and response_json['next_charge'] is not None:
+                        abrp_object.next_charge_level._set_value(response_json['next_charge'])  # pylint: disable=protected-access
+                    else:
+                        abrp_object.next_charge_level._set_value(None)  # pylint: disable=protected-access
                 else:
                     abrp_object.next_charge_level._set_value(None)  # pylint: disable=protected-access
             else:
                 abrp_object.next_charge_level._set_value(None)  # pylint: disable=protected-access
-        else:
-            abrp_object.next_charge_level._set_value(None)  # pylint: disable=protected-access
+        except RequestException as e:
+            if self.subsequent_errors > 0:
+                LOG.error('ABRP get next charge for vehicle %s failed: %s, will try again after next publish', vehicle.vin, e)
+            else:
+                LOG.warning('ABRP get next charge for vehicle %s failed: %s, will try again after next publish', vehicle.vin, e)
+            self.connection_state._set_value(value=ConnectionState.ERROR)  # pylint: disable=protected-access
 
     def _publish_telemetry(self, vin: str, telemetry_data: Dict, token: str):  # noqa: C901  # pylint: disable=too-many-branches
         params: Dict[str, str] = {'token': token}
