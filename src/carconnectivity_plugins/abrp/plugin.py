@@ -81,6 +81,14 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
                 raise ConfigurationError('Interval must be at least 10 seconds')
         self.interval._set_value(timedelta(seconds=self.active_config['interval']))  # pylint: disable=protected-access
 
+        if 'hide_location' in config or not isinstance(config['hide_location'], bool):
+            self.active_config['hide_location'] = config['hide_location']
+        else:
+            self.active_config['hide_location'] = False
+
+        if 'overwrite_location' in config:
+            self.active_config['overwrite_location'] = config['overwrite_location']
+
     def startup(self) -> None:
         LOG.info("Starting ABRP plugin")
         self._background_thread = threading.Thread(target=self._background_loop, daemon=False)
@@ -173,20 +181,31 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
                         power = power * -1
                     telemetry_data['power'] = power
 
-        if vehicle.position is not None and vehicle.position.enabled:
+        if not self.active_config['hide_location'] and vehicle.position is not None and vehicle.position.enabled:
             if vehicle.position.position_type.enabled and vehicle.position.position_type.value is not None:
                 if vehicle.position.position_type.value == vehicle.position.PositionType.PARKING:
                     telemetry_data['is_parked'] = True
                 elif vehicle.position.position_type.value == vehicle.position.PositionType.DRIVING:
                     telemetry_data['is_parked'] = False
-            if vehicle.position.latitude.enabled and vehicle.position.latitude.value is not None \
-                    and vehicle.position.longitude.enabled and vehicle.position.longitude.value is not None:
-                telemetry_data['lat'] = vehicle.position.latitude.value
-                telemetry_data['lon'] = vehicle.position.longitude.value
-            if vehicle.position.altitude.enabled and vehicle.position.altitude.value is not None:
-                telemetry_data['elevation'] = vehicle.position.altitude.range_in(Length.M)
-            if vehicle.position.heading.enabled and vehicle.position.heading.value is not None:
-                telemetry_data['heading'] = vehicle.position.heading.value
+            if 'overwrite_location' in self.active_config and self.active_config['overwrite_location'] is not None:
+                if 'lat' in self.active_config['overwrite_location'] and self.active_config['overwrite_location']['lat'] is not None \
+                        and isinstance(self.active_config['overwrite_location']['lat'], (float, int)):
+                    telemetry_data['lat'] = self.active_config['overwrite_location']['lat']
+                if 'lon' in self.active_config['overwrite_location'] and self.active_config['overwrite_location']['lon'] is not None \
+                        and isinstance(self.active_config['overwrite_location']['lon'], (float, int)):
+                    telemetry_data['lon'] = self.active_config['overwrite_location']['lon']
+                if 'elevation' in self.active_config['overwrite_location'] and self.active_config['overwrite_location']['elevation'] is not None \
+                        and isinstance(self.active_config['overwrite_location']['elevation'], (float, int)):
+                    telemetry_data['elevation'] = self.active_config['overwrite_location']['elevation']
+            else:
+                if vehicle.position.latitude.enabled and vehicle.position.latitude.value is not None \
+                        and vehicle.position.longitude.enabled and vehicle.position.longitude.value is not None:
+                    telemetry_data['lat'] = vehicle.position.latitude.value
+                    telemetry_data['lon'] = vehicle.position.longitude.value
+                if vehicle.position.altitude.enabled and vehicle.position.altitude.value is not None:
+                    telemetry_data['elevation'] = vehicle.position.altitude.range_in(Length.M)
+                if vehicle.position.heading.enabled and vehicle.position.heading.value is not None:
+                    telemetry_data['heading'] = vehicle.position.heading.value
         if vehicle.outside_temperature.enabled and vehicle.outside_temperature.value is not None:
             telemetry_data['ext_temp'] = vehicle.outside_temperature.temperature_in(Temperature.C)
         if vehicle.climatization.enabled and vehicle.climatization.settings.enabled and vehicle.climatization.settings.target_temperature is not None \

@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 - No unreleased changes so far
 
+## [0.7] - 2025-10-17
+### Added
+- Support for hiding location when sending data to ABRP
+- Support for overwriting location when sending data to ABRP
+
 ## [0.6.1] - 2025-10-15
 ### Fixed
 - Catch exception in _get_next_charge to avoid breaking the plugin if ABRP is not reachable or returns unexpected data
@@ -49,7 +54,8 @@ All notable changes to this project will be documented in this file.
 ## [0.1] - 2025-01-25
 Initial release, let's go and give this to the public to try out...
 
-[unreleased]: https://github.com/tillsteinbach/CarConnectivity-plugin-abrp/compare/v0.6.1...HEAD
+[unreleased]: https://github.com/tillsteinbach/CarConnectivity-plugin-abrp/compare/v0.7...HEAD
+[0.7]: https://github.com/tillsteinbach/CarConnectivity-plugin-abrp/releases/tag/v0.7
 [0.6.1]: https://github.com/tillsteinbach/CarConnectivity-plugin-abrp/releases/tag/v0.6.1
 [0.6]: https://github.com/tillsteinbach/CarConnectivity-plugin-abrp/releases/tag/v0.6
 [0.5]: https://github.com/tillsteinbach/CarConnectivity-plugin-abrp/releases/tag/v0.5

@@ -57,6 +57,11 @@ These are the valid options for the ABRP plugin
                         "H34FLJ9NS8SF095654": "66225132f4-8afeea-1323e-b51f-1e53455dfe31", // Second car
                     },
                     "interval": 30, // Interval to send data to ABRP (this should be reasonably low to not stress the server)
+                    "hide_location": true, // If true the location of the car is not sent to ABRP for privacy reasons
+                    "overwrite_location": { // If set the defined location is transmitted instead of the actual cars location
+                        "lat": 52.43256925243544,
+                        "lon": 10.798174966951391
+                    }
                 }
             }
         ]
