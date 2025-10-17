@@ -81,7 +81,7 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
                 raise ConfigurationError('Interval must be at least 10 seconds')
         self.interval._set_value(timedelta(seconds=self.active_config['interval']))  # pylint: disable=protected-access
 
-        if 'hide_location' in config or not isinstance(config['hide_location'], bool):
+        if 'hide_location' in config and isinstance(config['hide_location'], bool):
             self.active_config['hide_location'] = config['hide_location']
         else:
             self.active_config['hide_location'] = False
