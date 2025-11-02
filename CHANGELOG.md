@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 - No unreleased changes so far
 
-## [0.7] - 2025-10-17
+## [0.7] - 2025-11-02
 ### Added
 - Support for hiding location when sending data to ABRP
 - Support for overwriting location when sending data to ABRP
