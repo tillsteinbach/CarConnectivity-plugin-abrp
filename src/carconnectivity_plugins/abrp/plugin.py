@@ -62,8 +62,8 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
         self.last_telemetry_data: Dict[str, Tuple[datetime, Dict]] = {}
         self.abrp_objects: Dict[str, ABRP] = {}
 
-        self.connection_state: EnumAttribute = EnumAttribute(name="connection_state", parent=self, value_type=ConnectionState,
-                                                             value=ConnectionState.DISCONNECTED, tags={'plugin_custom'})
+        self.connection_state: EnumAttribute[ConnectionState] = EnumAttribute(name="connection_state", parent=self, value_type=ConnectionState,
+                                                                              value=ConnectionState.DISCONNECTED, tags={'plugin_custom'})
         self.interval: DurationAttribute = DurationAttribute(name="interval", parent=self, tags={'plugin_custom'})
         self.interval.minimum = timedelta(seconds=180)
         self.interval._is_changeable = True  # pylint: disable=protected-access
