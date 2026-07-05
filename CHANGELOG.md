@@ -73,7 +73,7 @@ Note: This plugin is required for compatibility with CarConnectivity version 0.1
 Initial release, let's go and give this to the public to try out...
 
 [unreleased]: https://github.com/tillsteinbach/CarConnectivity-plugin-abrp/compare/v0.8.3...HEAD
-[0.8.3]: https://github.com/tillsteinbach/CarConnectivity-plugin-abrp/compare/v0.8.2...v0.8.3
+[0.8.3]: https://github.com/tillsteinbach/CarConnectivity-plugin-abrp/releases/tag/v0.8.3
 [0.8.2]: https://github.com/tillsteinbach/CarConnectivity-plugin-abrp/releases/tag/v0.8.2
 [0.8.1]: https://github.com/tillsteinbach/CarConnectivity-plugin-abrp/releases/tag/v0.8.1
 [0.8]: https://github.com/tillsteinbach/CarConnectivity-plugin-abrp/releases/tag/v0.8
